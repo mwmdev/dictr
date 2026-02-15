@@ -1,0 +1,30 @@
+[package]
+name = "dictr"
+version = "0.1.0"
+edition = "2021"
+description = "Push-to-talk voice dictation for Linux"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/mwmdev/dictr"
+homepage = "https://github.com/mwmdev/dictr"
+keywords = ["dictation", "voice", "whisper", "push-to-talk", "speech"]
+categories = ["multimedia::audio", "command-line-utilities"]
+readme = "README.md"
+exclude = ["contrib/", ".github/", "CLAUDE.md", "features.md"]
+
+[features]
+default = []
+cuda = ["whisper-rs/cuda"]
+
+[dependencies]
+whisper-rs = "0.14"
+cpal = "0.15"
+rubato = { version = "0.16", features = ["fft_resampler"] }
+rdev = "0.5"
+hound = "3.5"
+reqwest = { version = "0.12", features = ["multipart", "json"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+anyhow = "1"
+libc = "0.2"

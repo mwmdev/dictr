@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+STATUS_FILE="/tmp/dictr-status"
+
+color_idle="#A89984"
+color_recording="#C53931"
+color_transcribing="#CF9A38"
+color_off="#665C54"
+
+if [ ! -f "$STATUS_FILE" ]; then
+    echo "<span color='${color_off}'>󰍬</span>"
+    echo "<span color='${color_off}'>󰍬</span>"
+    exit 0
+fi
+
+state=$(cat "$STATUS_FILE")
+
+case "$state" in
+    recording)
+        echo "<span color='${color_recording}'>󰍬 REC</span>"
+        echo "<span color='${color_recording}'>󰍬</span>"
+        ;;
+    transcribing)
+        echo "<span color='${color_transcribing}'>󰍬 ...</span>"
+        echo "<span color='${color_transcribing}'>󰍬</span>"
+        ;;
+    *)
+        echo "<span color='${color_idle}'>󰍬</span>"
+        echo "<span color='${color_idle}'>󰍬</span>"
+        ;;
+esac

@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: CPU
+            features: ""
+            artifact: dictr-x86_64-linux
+            cuda_deps: false
+          - name: CUDA
+            features: "--features cuda"
+            artifact: dictr-x86_64-linux-cuda
+            cuda_deps: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake clang pkg-config \
+            libasound2-dev \
+            libx11-dev libxi-dev libxtst-dev libxrandr-dev \
+            libssl-dev
+
+      - name: Install CUDA toolkit
+        if: matrix.cuda_deps
+        run: sudo apt-get install -y nvidia-cuda-toolkit
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.name }}
+
+      - name: Build
+        run: cargo build --release ${{ matrix.features }}
+
+      - name: Rename binary
+        run: cp target/release/dictr ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: artifacts/*

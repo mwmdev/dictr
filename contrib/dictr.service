@@ -1,0 +1,12 @@
+[Unit]
+Description=dictr push-to-talk voice dictation
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/dictr --paste
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
