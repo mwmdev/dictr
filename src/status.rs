@@ -23,8 +23,14 @@ fn signal_i3blocks() {
 
 fn register_cleanup() {
     unsafe {
-        libc::signal(libc::SIGINT, cleanup_handler as *const () as libc::sighandler_t);
-        libc::signal(libc::SIGTERM, cleanup_handler as *const () as libc::sighandler_t);
+        libc::signal(
+            libc::SIGINT,
+            cleanup_handler as *const () as libc::sighandler_t,
+        );
+        libc::signal(
+            libc::SIGTERM,
+            cleanup_handler as *const () as libc::sighandler_t,
+        );
     }
 }
 
