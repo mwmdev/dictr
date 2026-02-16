@@ -32,22 +32,25 @@ pub fn type_text(text: &str, delay_ms: u64) -> Result<()> {
 }
 
 pub fn paste_text(text: &str) -> Result<()> {
-    let mut child = Command::new("xclip")
-        .args(["-selection", "clipboard"])
-        .stdin(std::process::Stdio::piped())
-        .spawn()
-        .context("failed to run xclip")?;
-    if let Some(ref mut stdin) = child.stdin {
-        use std::io::Write;
-        stdin.write_all(text.as_bytes())?;
-    }
-    let status = child.wait()?;
-    if !status.success() {
-        anyhow::bail!("xclip failed with {status}");
+    // Write to both clipboard and primary so shift+Insert works everywhere
+    for selection in ["clipboard", "primary"] {
+        let mut child = Command::new("xclip")
+            .args(["-selection", selection])
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .context("failed to run xclip")?;
+        if let Some(ref mut stdin) = child.stdin {
+            use std::io::Write;
+            stdin.write_all(text.as_bytes())?;
+        }
+        let status = child.wait()?;
+        if !status.success() {
+            anyhow::bail!("xclip ({selection}) failed with {status}");
+        }
     }
 
     let status = Command::new("xdotool")
-        .args(["key", "--clearmodifiers", "ctrl+v"])
+        .args(["key", "--clearmodifiers", "shift+Insert"])
         .status()
         .context("failed to run xdotool")?;
     if !status.success() {
