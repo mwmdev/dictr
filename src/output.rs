@@ -5,11 +5,11 @@ pub fn check_deps() -> Result<()> {
     Command::new("xdotool")
         .arg("--version")
         .output()
-        .context("xdotool not found — install it (e.g. apt install xdotool)")?;
+        .context("xdotool not found — install it")?;
     Command::new("xclip")
         .arg("-version")
         .output()
-        .context("xclip not found — install it (e.g. apt install xclip)")?;
+        .context("xclip not found — install it")?;
     Ok(())
 }
 

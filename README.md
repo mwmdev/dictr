@@ -6,7 +6,7 @@
 
 Push-to-talk voice dictation for Linux.
 
-Singel binary - Private - Fast - Customizable
+Single binary - Private - Fast - Customizable
 
 ## Features
 - **Push-to-talk** — hold a hotkey to record, release to transcribe and paste
