@@ -2,6 +2,9 @@
 
 ## 0.1.1
 
+- Append space to all transcriptions for seamless typing continuation
+- Handle all BLANK_AUDIO variants (with/without parentheses and underscores) as empty transcription
+- Simplify i3blocks indicators by removing REC text and transcribing dots
 - Paste mode uses `shift+Insert` and writes to both clipboard and primary selections for broader compatibility
 - Fix clippy warning on newer Rust toolchains (`function_casts_as_integer`)
 
