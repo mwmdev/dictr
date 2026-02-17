@@ -193,7 +193,8 @@ fn main() -> Result<()> {
                         }
                     }
                     Ok(text) => {
-                        let text = config.apply_replacements(&text);
+                        let mut text = config.apply_replacements(&text);
+                        text.push(' ');
                         if cli.verbose {
                             eprintln!("{text}");
                         }
