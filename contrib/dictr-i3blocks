@@ -17,11 +17,11 @@ state=$(cat "$STATUS_FILE")
 
 case "$state" in
     recording)
-        echo "<span color='${color_recording}'>󰍬 REC</span>"
+        echo "<span color='${color_recording}'>󰍬</span>"
         echo "<span color='${color_recording}'>󰍬</span>"
         ;;
     transcribing)
-        echo "<span color='${color_transcribing}'>󰍬 ...</span>"
+        echo "<span color='${color_transcribing}'>󰍬</span>"
         echo "<span color='${color_transcribing}'>󰍬</span>"
         ;;
     *)
