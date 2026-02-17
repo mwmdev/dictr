@@ -187,7 +187,13 @@ fn main() -> Result<()> {
                     config.language.as_deref(),
                     config.initial_prompt.as_deref(),
                 ) {
-                    Ok(text) if text.is_empty() || text == "(BLANK AUDIO)" || text == "BLANK AUDIO" || text == "BLANK_AUDIO" || text == "(BLANK_AUDIO)" => {
+                    Ok(text)
+                        if text.is_empty()
+                            || text == "(BLANK AUDIO)"
+                            || text == "BLANK AUDIO"
+                            || text == "BLANK_AUDIO"
+                            || text == "(BLANK_AUDIO)" =>
+                    {
                         if cli.verbose {
                             eprintln!("(empty transcription)");
                         }
