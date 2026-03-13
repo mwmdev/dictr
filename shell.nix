@@ -37,7 +37,9 @@ pkgs.mkShell {
   LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
   CMAKE_CUDA_ARCHITECTURES = "89";
   # Ensure the real NVIDIA driver is found before Nix CUDA stubs in the rpath
-  CARGO_BUILD_RUSTFLAGS = "-C link-arg=-Wl,-rpath,/run/opengl-driver/lib";
+  CARGO_BUILD_RUSTFLAGS = "-C link-arg=-Wl,-rpath,/run/opengl-driver/lib"
+    + " -C link-arg=-Wl,-rpath,${pkgs.cudaPackages.cuda_cudart}/lib"
+    + " -C link-arg=-Wl,-rpath,${pkgs.cudaPackages.libcublas}/lib";
   LD_LIBRARY_PATH = "/run/opengl-driver/lib:" + pkgs.lib.makeLibraryPath [
     pkgs.alsa-lib
     pkgs.xorg.libX11
