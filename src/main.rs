@@ -7,6 +7,7 @@ mod transcribe;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
+use std::path::Path;
 use std::sync::mpsc;
 use std::time::Instant;
 
@@ -56,6 +57,10 @@ struct Cli {
     #[arg(long)]
     min_duration: Option<u64>,
 
+    /// Transcribe an audio file and print to stdout (skips hotkey/mic)
+    #[arg(long)]
+    file: Option<String>,
+
     /// Show verbose output (model loading, debug info)
     #[arg(long, short)]
     verbose: bool,
@@ -82,7 +87,6 @@ fn main() -> Result<()> {
     }
 
     let mut config = config::Config::load()?;
-    output::check_deps()?;
 
     // Suppress whisper.cpp/ggml logging unless --verbose
     if !cli.verbose {
@@ -91,6 +95,17 @@ fn main() -> Result<()> {
 
     // CLI overrides
     apply_cli_overrides(&mut config, &cli);
+
+    // File mode: transcribe a file and exit
+    if let Some(ref file_path) = cli.file {
+        // Default model for file mode
+        if cli.model.is_none() && config.model_path.contains("ggml-base.bin") {
+            config.model_path = shellexpand("~/.cache/whisper/base.pt");
+        }
+        return transcribe_file(file_path, &config, cli.verbose);
+    }
+
+    output::check_deps()?;
 
     // Init transcription backend
     let mut backend: Box<dyn TranscribeBackend> = match config.backend.as_str() {
@@ -220,6 +235,99 @@ fn main() -> Result<()> {
     }
 }
 
+fn transcribe_file(file_path: &str, config: &config::Config, verbose: bool) -> Result<()> {
+    let input = Path::new(file_path);
+    if !input.exists() {
+        bail!("file not found: {}", input.display());
+    }
+
+    let audio = decode_audio_file(input, verbose)?;
+    if audio.is_empty() {
+        bail!("no audio samples decoded from {}", input.display());
+    }
+
+    let model_path = config.resolved_model_path();
+    if !model_path.exists() {
+        bail!("model not found at {}", model_path.display());
+    }
+    if verbose {
+        eprintln!("loading model from {}...", model_path.display());
+    }
+    let path_str = model_path.to_str().context("invalid UTF-8 in model path")?;
+    let mut backend = transcribe::LocalWhisper::new(path_str)?;
+
+    if verbose {
+        eprintln!(
+            "transcribing {} ({} samples, {:.1}s)...",
+            input.display(),
+            audio.len(),
+            audio.len() as f32 / 16000.0
+        );
+    }
+
+    let text = backend.transcribe(
+        &audio,
+        config.language.as_deref(),
+        config.initial_prompt.as_deref(),
+    )?;
+
+    let text = config.apply_replacements(&text);
+    println!("{text}");
+    Ok(())
+}
+
+fn decode_audio_file(path: &Path, verbose: bool) -> Result<Vec<f32>> {
+    let tmp_wav = std::env::temp_dir().join("dictr-file-input.wav");
+
+    if verbose {
+        eprintln!("converting {} via ffmpeg...", path.display());
+    }
+
+    let output = std::process::Command::new("ffmpeg")
+        .args([
+            "-i",
+            path.to_str().context("invalid UTF-8 in file path")?,
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+            "-f",
+            "wav",
+            "-y",
+            tmp_wav.to_str().context("invalid UTF-8 in temp path")?,
+        ])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .context("failed to run ffmpeg (is it installed?)")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let _ = std::fs::remove_file(&tmp_wav);
+        bail!("ffmpeg failed: {stderr}");
+    }
+
+    let mut reader =
+        hound::WavReader::open(&tmp_wav).context("failed to read converted WAV file")?;
+    let samples: Vec<f32> = reader
+        .samples::<i16>()
+        .map(|s| s.map(|v| v as f32 / i16::MAX as f32))
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .context("failed to decode WAV samples")?;
+
+    let _ = std::fs::remove_file(&tmp_wav);
+    Ok(samples)
+}
+
+fn shellexpand(path: &str) -> String {
+    if path.starts_with('~') {
+        if let Some(home) = std::env::var_os("HOME") {
+            return path.replacen('~', &home.to_string_lossy(), 1);
+        }
+    }
+    path.to_string()
+}
+
 fn apply_cli_overrides(config: &mut config::Config, cli: &Cli) {
     if let Some(b) = &cli.backend {
         config.backend = b.clone();
@@ -320,6 +428,39 @@ mod tests {
         let cli = parse_args(&["--min-duration", "500"]);
         apply_cli_overrides(&mut config, &cli);
         assert_eq!(config.min_duration_ms, 500);
+    }
+
+    #[test]
+    fn cli_file_flag() {
+        let cli = parse_args(&["--file", "/tmp/voice.ogg"]);
+        assert_eq!(cli.file, Some("/tmp/voice.ogg".into()));
+    }
+
+    #[test]
+    fn cli_file_with_language_and_prompt() {
+        let cli = parse_args(&[
+            "--file",
+            "/tmp/voice.ogg",
+            "--language",
+            "en",
+            "--initial-prompt",
+            "NixOS",
+        ]);
+        assert_eq!(cli.file, Some("/tmp/voice.ogg".into()));
+        assert_eq!(cli.language, Some("en".into()));
+        assert_eq!(cli.initial_prompt, Some("NixOS".into()));
+    }
+
+    #[test]
+    fn shellexpand_tilde() {
+        let expanded = shellexpand("~/.cache/whisper/base.pt");
+        assert!(!expanded.starts_with('~'));
+        assert!(expanded.ends_with("/.cache/whisper/base.pt"));
+    }
+
+    #[test]
+    fn shellexpand_absolute() {
+        assert_eq!(shellexpand("/opt/model.bin"), "/opt/model.bin");
     }
 
     #[test]
