@@ -14,7 +14,7 @@ Single binary - Private - Fast - Customizable
 - **CUDA GPU acceleration** — optional NVIDIA GPU support for sub-second transcription
 - **OpenAI API fallback** — use the OpenAI Whisper API as an alternative backend
 - **Text replacements** — custom post-processing rules for text replacement
-- **File transcription** — transcribe audio files directly via `--file`
+- **File transcription** — transcribe audio files directly via `--file` (any format ffmpeg supports)
 
 ## Usage
 
@@ -30,7 +30,7 @@ dictr --list-devices           # List available input devices
 dictr --language fr            # Transcribe in French
 dictr --initial-prompt '...'   # Guide transcription with context
 dictr --min-duration 500       # Min recording duration in ms (default: 300)
-dictr --file recording.ogg     # Transcribe an audio file and print to stdout
+dictr --file recording.ogg     # Transcribe an audio file (requires ffmpeg)
 dictr --verbose                # Debug output
 ```
 
@@ -52,7 +52,7 @@ Then download a [Whisper model](https://huggingface.co/ggerganov/whisper.cpp/tre
 
 ### Build from source
 
-Requires Linux with X11, `xdotool`, `xclip`, ALSA or PipeWire, plus build deps: `cmake`, `clang`, `pkg-config`, `libasound2-dev`, `libx11-dev`, `libxi-dev`, `libxtst-dev`, `libxrandr-dev`, `libssl-dev`. For CUDA: NVIDIA CUDA toolkit.
+Requires Linux with X11, `xdotool`, `xclip`, ALSA or PipeWire. Optional: `ffmpeg` (for `--file`). Build deps: `cmake`, `clang`, `pkg-config`, `libasound2-dev`, `libx11-dev`, `libxi-dev`, `libxtst-dev`, `libxrandr-dev`, `libssl-dev`. For CUDA: NVIDIA CUDA toolkit.
 
 ```sh
 cargo build --release                  # CPU only
