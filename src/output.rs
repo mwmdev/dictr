@@ -2,14 +2,20 @@ use anyhow::{Context, Result};
 use std::process::Command;
 
 pub fn check_deps() -> Result<()> {
-    Command::new("xdotool")
+    let out = Command::new("xdotool")
         .arg("--version")
         .output()
         .context("xdotool not found — install it")?;
-    Command::new("xclip")
+    if !out.status.success() {
+        anyhow::bail!("xdotool check failed");
+    }
+    let out = Command::new("xclip")
         .arg("-version")
         .output()
         .context("xclip not found — install it")?;
+    if !out.status.success() {
+        anyhow::bail!("xclip check failed");
+    }
     Ok(())
 }
 

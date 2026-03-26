@@ -98,9 +98,8 @@ fn main() -> Result<()> {
 
     // File mode: transcribe a file and exit
     if let Some(ref file_path) = cli.file {
-        // Default model for file mode
-        if cli.model.is_none() && config.model_path.contains("ggml-base.bin") {
-            config.model_path = shellexpand("~/.cache/whisper/base.pt");
+        if config.backend == "api" {
+            eprintln!("warning: --file always uses local backend, ignoring --backend api");
         }
         return transcribe_file(file_path, &config, cli.verbose);
     }
@@ -277,7 +276,7 @@ fn transcribe_file(file_path: &str, config: &config::Config, verbose: bool) -> R
 }
 
 fn decode_audio_file(path: &Path, verbose: bool) -> Result<Vec<f32>> {
-    let tmp_wav = std::env::temp_dir().join("dictr-file-input.wav");
+    let tmp_wav = std::env::temp_dir().join(format!("dictr-{}.wav", std::process::id()));
 
     if verbose {
         eprintln!("converting {} via ffmpeg...", path.display());
@@ -317,15 +316,6 @@ fn decode_audio_file(path: &Path, verbose: bool) -> Result<Vec<f32>> {
 
     let _ = std::fs::remove_file(&tmp_wav);
     Ok(samples)
-}
-
-fn shellexpand(path: &str) -> String {
-    if path.starts_with('~') {
-        if let Some(home) = std::env::var_os("HOME") {
-            return path.replacen('~', &home.to_string_lossy(), 1);
-        }
-    }
-    path.to_string()
 }
 
 fn apply_cli_overrides(config: &mut config::Config, cli: &Cli) {
@@ -449,18 +439,6 @@ mod tests {
         assert_eq!(cli.file, Some("/tmp/voice.ogg".into()));
         assert_eq!(cli.language, Some("en".into()));
         assert_eq!(cli.initial_prompt, Some("NixOS".into()));
-    }
-
-    #[test]
-    fn shellexpand_tilde() {
-        let expanded = shellexpand("~/.cache/whisper/base.pt");
-        assert!(!expanded.starts_with('~'));
-        assert!(expanded.ends_with("/.cache/whisper/base.pt"));
-    }
-
-    #[test]
-    fn shellexpand_absolute() {
-        assert_eq!(shellexpand("/opt/model.bin"), "/opt/model.bin");
     }
 
     #[test]
