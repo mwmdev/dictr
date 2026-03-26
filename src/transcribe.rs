@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::collections::HashMap;
+use serde::Deserialize;
 use std::io::Cursor;
 
 pub trait TranscribeBackend {
@@ -52,9 +52,12 @@ impl TranscribeBackend for LocalWhisper {
         let n = state.full_n_segments().context("failed to get segments")?;
         let mut text = String::new();
         for i in 0..n {
-            if let Ok(seg) = state.full_get_segment_text(i) {
-                text.push_str(seg.trim());
-                text.push(' ');
+            match state.full_get_segment_text(i) {
+                Ok(seg) => {
+                    text.push_str(seg.trim());
+                    text.push(' ');
+                }
+                Err(e) => eprintln!("warning: segment {i} failed: {e}"),
             }
         }
         Ok(text.trim().to_string())
@@ -73,7 +76,9 @@ pub struct ApiWhisper {
 impl ApiWhisper {
     pub fn new(api_key: String, api_url: String) -> Result<Self> {
         let rt = tokio::runtime::Runtime::new()?;
-        let client = reqwest::Client::new();
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()?;
         Ok(Self {
             api_key,
             api_url,
@@ -118,8 +123,13 @@ impl TranscribeBackend for ApiWhisper {
                 .await?
                 .error_for_status()?;
 
-            let json: HashMap<String, String> = resp.json().await?;
-            let text = json.get("text").cloned().unwrap_or_default();
+            #[derive(Deserialize)]
+            struct TranscriptionResponse {
+                #[serde(default)]
+                text: String,
+            }
+            let parsed: TranscriptionResponse = resp.json().await?;
+            let text = parsed.text;
             Ok(text)
         })
     }
