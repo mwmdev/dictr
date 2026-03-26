@@ -31,6 +31,11 @@ impl AudioRecorder {
                 });
 
                 if let Some((pactl_name, desc, _)) = pactl_match {
+                    // SAFETY: set_var is unsound in multi-threaded processes (UB per Rust docs).
+                    // In API mode, tokio runtime threads may already exist at this point.
+                    // Accepted risk: PipeWire requires this env var before device open, and
+                    // no safe alternative exists without cpal API changes. Will be a compile
+                    // error in Rust 2024 edition — revisit then.
                     std::env::set_var("PIPEWIRE_NODE", &pactl_name);
                     let dev = host
                         .default_input_device()
@@ -72,8 +77,12 @@ impl AudioRecorder {
     }
 
     pub fn start(&mut self) -> Result<()> {
-        // Clear previous recording
-        self.buffer.lock().expect("audio buffer poisoned").clear();
+        // Clear previous recording and pre-allocate for ~60s to avoid
+        // reallocations in the realtime audio callback
+        let mut buf = self.buffer.lock().expect("audio buffer poisoned");
+        buf.clear();
+        buf.reserve(self.config.sample_rate.0 as usize * 60);
+        drop(buf);
 
         let buffer = Arc::clone(&self.buffer);
         let channels = self.config.channels as usize;
