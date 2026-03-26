@@ -122,8 +122,11 @@ impl Config {
 
     pub fn apply_replacements(&self, text: &str) -> String {
         let mut result = text.to_string();
-        for (from, to) in &self.replacements.rules {
-            if from.is_empty() {
+        // Sort keys for deterministic replacement order
+        let mut rules: Vec<_> = self.replacements.rules.iter().collect();
+        rules.sort_by_key(|(k, _)| k.as_str());
+        for (from, to) in rules {
+            if from.is_empty() || !from.is_ascii() {
                 continue;
             }
             let from_lower = from.to_lowercase();
