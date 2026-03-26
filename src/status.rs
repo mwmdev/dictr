@@ -1,17 +1,33 @@
-use std::fs;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-const STATUS_PATH: &str = "/tmp/dictr-status";
 const I3BLOCKS_SIGNAL: u8 = 11;
+const MAX_PATH_LEN: usize = 128;
 
+/// Null-terminated path for async-signal-safe access in the signal handler.
+/// Accessed via raw pointer to avoid `static mut` reference warnings.
+static mut STATUS_PATH_BUF: [u8; MAX_PATH_LEN] = [0; MAX_PATH_LEN];
 static REGISTERED: AtomicBool = AtomicBool::new(false);
+
+fn status_path() -> String {
+    "/tmp/dictr-status".to_string()
+}
 
 pub fn set(state: &str) {
     if !REGISTERED.swap(true, Ordering::Relaxed) {
+        let path = status_path();
+        let bytes = path.as_bytes();
+        // Store null-terminated path for the signal handler
+        unsafe {
+            let ptr = std::ptr::addr_of_mut!(STATUS_PATH_BUF);
+            let buf = &mut *ptr;
+            let len = bytes.len().min(MAX_PATH_LEN - 1);
+            buf[..len].copy_from_slice(&bytes[..len]);
+            buf[len] = 0;
+        }
         register_cleanup();
     }
-    let _ = fs::write(STATUS_PATH, state);
+    let _ = std::fs::write(status_path(), state);
     signal_i3blocks();
 }
 
@@ -34,11 +50,12 @@ fn register_cleanup() {
     }
 }
 
-extern "C" fn cleanup_handler(_sig: libc::c_int) {
-    let _ = std::fs::remove_file(STATUS_PATH);
-    // Re-raise to get default behavior (exit)
+extern "C" fn cleanup_handler(sig: libc::c_int) {
+    // Only async-signal-safe operations: libc::unlink, libc::signal, libc::raise
     unsafe {
-        libc::signal(_sig, libc::SIG_DFL);
-        libc::raise(_sig);
+        let ptr = std::ptr::addr_of!(STATUS_PATH_BUF) as *const libc::c_char;
+        libc::unlink(ptr);
+        libc::signal(sig, libc::SIG_DFL);
+        libc::raise(sig);
     }
 }
