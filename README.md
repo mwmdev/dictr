@@ -14,6 +14,7 @@ Single binary - Private - Fast - Customizable
 - **CUDA GPU acceleration** — optional NVIDIA GPU support for sub-second transcription
 - **OpenAI API fallback** — use the OpenAI Whisper API as an alternative backend
 - **Text replacements** — custom post-processing rules for text replacement
+- **File transcription** — transcribe audio files directly via `--file`
 
 ## Usage
 
@@ -29,6 +30,7 @@ dictr --list-devices           # List available input devices
 dictr --language fr            # Transcribe in French
 dictr --initial-prompt '...'   # Guide transcription with context
 dictr --min-duration 500       # Min recording duration in ms (default: 300)
+dictr --file recording.ogg     # Transcribe an audio file and print to stdout
 dictr --verbose                # Debug output
 ```
 
