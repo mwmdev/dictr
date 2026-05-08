@@ -24,17 +24,13 @@ impl Debouncer {
 
     fn handle(&mut self, event_type: EventType) -> Option<HotkeyEvent> {
         match event_type {
-            EventType::KeyPress(key) if key == self.target_key => {
-                if !self.is_pressed {
-                    self.is_pressed = true;
-                    return Some(HotkeyEvent::Pressed);
-                }
+            EventType::KeyPress(key) if key == self.target_key && !self.is_pressed => {
+                self.is_pressed = true;
+                return Some(HotkeyEvent::Pressed);
             }
-            EventType::KeyRelease(key) if key == self.target_key => {
-                if self.is_pressed {
-                    self.is_pressed = false;
-                    return Some(HotkeyEvent::Released);
-                }
+            EventType::KeyRelease(key) if key == self.target_key && self.is_pressed => {
+                self.is_pressed = false;
+                return Some(HotkeyEvent::Released);
             }
             _ => {}
         }
