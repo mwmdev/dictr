@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+### Fixed
+- Use synchronized clipboard paste by default to avoid keyboard layout swaps and clipboard restore races.
+
 ## 0.2.0
 
 ### Added

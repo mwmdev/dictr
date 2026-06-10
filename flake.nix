@@ -74,7 +74,7 @@
             in
             pkgs.rustPlatform.buildRustPackage {
               pname = if cuda then "dictr-cuda-sm${cudaArch}" else "dictr";
-              version = "0.2.0";
+              version = "0.2.1";
               src = ./.;
 
               cargoLock.lockFile = ./Cargo.lock;
