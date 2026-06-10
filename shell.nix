@@ -1,5 +1,11 @@
-{ pkgs ? import <nixpkgs> { config.allowUnfree = true; } }:
+{
+  pkgs ? import <nixpkgs> { config.allowUnfree = true; },
+  cudaArch ? "native",
+}:
 
+let
+  cudaPackages = pkgs.cudaPackages_12_9;
+in
 pkgs.mkShell {
   buildInputs = with pkgs; [
     # Rust toolchain
@@ -35,11 +41,12 @@ pkgs.mkShell {
   ];
 
   LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-  CMAKE_CUDA_ARCHITECTURES = "89";
+  CMAKE_CUDA_ARCHITECTURES = cudaArch;
   # Ensure the real NVIDIA driver is found before Nix CUDA stubs in the rpath
   CARGO_BUILD_RUSTFLAGS = "-C link-arg=-Wl,-rpath,/run/opengl-driver/lib"
-    + " -C link-arg=-Wl,-rpath,${pkgs.cudaPackages.cuda_cudart}/lib"
-    + " -C link-arg=-Wl,-rpath,${pkgs.cudaPackages.libcublas}/lib";
+    + " -C link-arg=-Wl,-rpath,${pkgs.lib.getLib cudaPackages.cuda_cudart}/lib"
+    + " -C link-arg=-Wl,-rpath,${pkgs.lib.getLib cudaPackages.libcublas}/lib"
+    + " -L ${pkgs.lib.getLib cudaPackages.cuda_cudart}/lib/stubs";
   LD_LIBRARY_PATH = "/run/opengl-driver/lib:" + pkgs.lib.makeLibraryPath [
     pkgs.alsa-lib
     pkgs.xorg.libX11
@@ -47,7 +54,7 @@ pkgs.mkShell {
     pkgs.xorg.libXtst
     pkgs.xorg.libXrandr
     pkgs.openssl
-    pkgs.cudaPackages.cuda_cudart
-    pkgs.cudaPackages.libcublas
+    cudaPackages.cuda_cudart
+    cudaPackages.libcublas
   ];
 }

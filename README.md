@@ -50,6 +50,22 @@ cargo install dictr
 
 Then download a [Whisper model](https://huggingface.co/ggerganov/whisper.cpp/tree/main) to `~/.local/share/dictr/models/`.
 
+### NixOS
+
+From a source checkout:
+
+```sh
+nix profile add .#dictr-cpu   # CPU build
+nvidia-smi --query-gpu=compute_cap --format=csv,noheader
+nix profile add .#dictr-cuda-sm120  # CUDA build for compute capability 12.0
+```
+
+CUDA packages are named `dictr-cuda-smXX`, where `XX` is the compute capability
+without the dot. For example, compute capability `8.9` uses `dictr-cuda-sm89`.
+Run `nix flake show` to list supported CUDA targets. The CUDA package keeps the
+CUDA runtime libraries in the Nix closure, so it does not need `LD_LIBRARY_PATH`
+wrappers.
+
 ### Build from source
 
 Requires Linux with X11, `xdotool`, `xclip`, ALSA or PipeWire. Optional: `ffmpeg` (for `--file`). Build deps: `cmake`, `clang`, `pkg-config`, `libasound2-dev`, `libx11-dev`, `libxi-dev`, `libxtst-dev`, `libxrandr-dev`, `libssl-dev`. For CUDA: NVIDIA CUDA toolkit.
@@ -59,7 +75,9 @@ cargo build --release                  # CPU only
 cargo build --release --features cuda  # With GPU
 ```
 
-On NixOS, use `nix-shell --run "cargo build --release"`
+On NixOS, use `nix-shell --run "cargo build --release"` for CPU builds, or
+`nix-shell --argstr cudaArch 120 --run "cargo build --release --features cuda"`
+for CUDA builds.
 
 ## Configuration
 
