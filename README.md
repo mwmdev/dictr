@@ -19,12 +19,13 @@ Single binary - Private - Fast - Customizable
 ## Usage
 
 ```sh
-dictr                          # Default: AltGr hotkey, local whisper, xdotool type
+dictr                          # Default: AltGr hotkey, local whisper, safe clipboard paste
 dictr --hotkey F9              # Use F9 instead of AltGr
 dictr --backend api            # Use OpenAI Whisper API (requires OPENAI_API_KEY)
 dictr --api-url http://...     # Custom API endpoint
 dictr --model /path/to/model   # Specific model file
-dictr --paste                  # Use clipboard paste (better for accents/Unicode)
+dictr --paste                  # Force clipboard paste output
+dictr --type                   # Use xdotool typing instead of paste
 dictr --device AT2020          # Select mic by name substring
 dictr --list-devices           # List available input devices
 dictr --language fr            # Transcribe in French
@@ -89,6 +90,7 @@ backend = "local"                # "local" or "api"
 model_path = "~/.local/share/dictr/models/ggml-base.bin"
 api_key = ""                     # or set OPENAI_API_KEY env var
 api_url = "https://api.openai.com/v1/audio/transcriptions"
+output_mode = "paste"            # "paste" or "type"; paste is layout-safe
 typing_delay_ms = 2
 min_duration_ms = 300
 device = "AT2020USB+"
@@ -103,6 +105,14 @@ initial_prompt = "commit, readme, build, test, deploy, refactor" # Guide transcr
 ### Text replacements
 
 The `[replacements]` table performs substitution on transcription output. Useful for special cases like "slash" → "/" or "new line" → "\n". Keys are replaced with their corresponding values in the final transcribed text. 
+
+### Text insertion
+
+The default `output_mode = "paste"` inserts text through the clipboard and then
+restores the previous clipboard contents. This avoids keyboard layout issues
+with simulated typing, such as QWERTY/AZERTY `a`/`q` and `w`/`z` swaps. Use
+`--type` or `output_mode = "type"` only if you specifically need the older
+`xdotool type` behavior.
 
 ## License
 

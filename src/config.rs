@@ -15,6 +15,8 @@ pub struct Config {
     pub api_key: String,
     #[serde(default = "default_api_url")]
     pub api_url: String,
+    #[serde(default = "default_output_mode")]
+    pub output_mode: OutputMode,
     #[serde(default = "default_typing_delay")]
     pub typing_delay_ms: u64,
     #[serde(default = "default_min_duration")]
@@ -27,6 +29,13 @@ pub struct Config {
     pub initial_prompt: Option<String>,
     #[serde(default)]
     pub replacements: Replacements,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum OutputMode {
+    Paste,
+    Type,
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,6 +71,9 @@ fn default_model_path() -> String {
 fn default_api_url() -> String {
     "https://api.openai.com/v1/audio/transcriptions".into()
 }
+fn default_output_mode() -> OutputMode {
+    OutputMode::Paste
+}
 fn default_typing_delay() -> u64 {
     2
 }
@@ -77,6 +89,7 @@ impl Default for Config {
             model_path: default_model_path(),
             api_key: String::new(),
             api_url: default_api_url(),
+            output_mode: default_output_mode(),
             typing_delay_ms: default_typing_delay(),
             min_duration_ms: default_min_duration(),
             device: None,
@@ -208,6 +221,7 @@ mod tests {
         let config = Config::default();
         assert_eq!(config.hotkey, "AltGr");
         assert_eq!(config.backend, "local");
+        assert_eq!(config.output_mode, OutputMode::Paste);
         assert_eq!(config.typing_delay_ms, 2);
         assert!(config.api_key.is_empty());
         assert!(config.model_path.contains("ggml-base.bin"));
@@ -220,6 +234,7 @@ mod tests {
             backend = "api"
             model_path = "/tmp/model.bin"
             api_key = "sk-test"
+            output_mode = "type"
             typing_delay_ms = 5
         "#;
         let config: Config = toml::from_str(toml).unwrap();
@@ -227,6 +242,7 @@ mod tests {
         assert_eq!(config.backend, "api");
         assert_eq!(config.model_path, "/tmp/model.bin");
         assert_eq!(config.api_key, "sk-test");
+        assert_eq!(config.output_mode, OutputMode::Type);
         assert_eq!(config.typing_delay_ms, 5);
     }
 
@@ -236,6 +252,7 @@ mod tests {
         let config: Config = toml::from_str(toml).unwrap();
         assert_eq!(config.hotkey, "CapsLock");
         assert_eq!(config.backend, "local");
+        assert_eq!(config.output_mode, OutputMode::Paste);
         assert_eq!(config.typing_delay_ms, 2);
     }
 
@@ -244,6 +261,19 @@ mod tests {
         let config: Config = toml::from_str("").unwrap();
         assert_eq!(config.hotkey, "AltGr");
         assert_eq!(config.backend, "local");
+        assert_eq!(config.output_mode, OutputMode::Paste);
+    }
+
+    #[test]
+    fn parse_output_mode_type() {
+        let config: Config = toml::from_str(r#"output_mode = "type""#).unwrap();
+        assert_eq!(config.output_mode, OutputMode::Type);
+    }
+
+    #[test]
+    fn invalid_output_mode_fails() {
+        let result = toml::from_str::<Config>(r#"output_mode = "keyboard""#);
+        assert!(result.is_err());
     }
 
     #[test]

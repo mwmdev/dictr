@@ -7,6 +7,7 @@ mod transcribe;
 
 use anyhow::{bail, Context, Result};
 use clap::Parser;
+use config::OutputMode;
 use std::path::Path;
 use std::sync::mpsc;
 use std::time::Instant;
@@ -30,8 +31,12 @@ struct Cli {
     hotkey: Option<String>,
 
     /// Use clipboard paste instead of xdotool type
-    #[arg(long)]
+    #[arg(long, conflicts_with = "type_output")]
     paste: bool,
+
+    /// Use xdotool typing instead of clipboard paste
+    #[arg(long = "type", conflicts_with = "paste")]
+    type_output: bool,
 
     /// List available input devices and exit
     #[arg(long)]
@@ -104,7 +109,7 @@ fn main() -> Result<()> {
         return transcribe_file(file_path, &config, cli.verbose);
     }
 
-    output::check_deps()?;
+    output::check_deps(config.output_mode)?;
 
     // Init transcription backend
     let mut backend: Box<dyn TranscribeBackend> = match config.backend.as_str() {
@@ -218,10 +223,9 @@ fn main() -> Result<()> {
                         if cli.verbose {
                             eprintln!("{text}");
                         }
-                        if cli.paste {
-                            output::paste_text(&text)?;
-                        } else {
-                            output::type_text(&text, config.typing_delay_ms)?;
+                        match config.output_mode {
+                            OutputMode::Paste => output::paste_text(&text)?,
+                            OutputMode::Type => output::type_text(&text, config.typing_delay_ms)?,
                         }
                     }
                     Err(e) => {
@@ -343,6 +347,12 @@ fn apply_cli_overrides(config: &mut config::Config, cli: &Cli) {
     if let Some(ms) = cli.min_duration {
         config.min_duration_ms = ms;
     }
+    if cli.paste {
+        config.output_mode = OutputMode::Paste;
+    }
+    if cli.type_output {
+        config.output_mode = OutputMode::Type;
+    }
 }
 
 #[cfg(test)]
@@ -421,6 +431,31 @@ mod tests {
     }
 
     #[test]
+    fn cli_override_paste_output_mode() {
+        let mut config = config::Config {
+            output_mode: OutputMode::Type,
+            ..config::Config::default()
+        };
+        let cli = parse_args(&["--paste"]);
+        apply_cli_overrides(&mut config, &cli);
+        assert_eq!(config.output_mode, OutputMode::Paste);
+    }
+
+    #[test]
+    fn cli_override_type_output_mode() {
+        let mut config = config::Config::default();
+        let cli = parse_args(&["--type"]);
+        apply_cli_overrides(&mut config, &cli);
+        assert_eq!(config.output_mode, OutputMode::Type);
+    }
+
+    #[test]
+    fn cli_rejects_paste_and_type_together() {
+        let result = Cli::try_parse_from(["dictr", "--paste", "--type"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn cli_file_flag() {
         let cli = parse_args(&["--file", "/tmp/voice.ogg"]);
         assert_eq!(cli.file, Some("/tmp/voice.ogg".into()));
@@ -448,6 +483,7 @@ mod tests {
         apply_cli_overrides(&mut config, &cli);
         assert_eq!(config.backend, "local");
         assert_eq!(config.hotkey, "AltGr");
+        assert_eq!(config.output_mode, OutputMode::Paste);
         assert_eq!(config.min_duration_ms, 300);
         assert!(config.device.is_none());
         assert!(config.language.is_none());
